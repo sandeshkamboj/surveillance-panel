@@ -1,6 +1,6 @@
 const supabase = Supabase.createClient(
     'https://yxdnyavcxouutwkvdoef.supabase.co',
-    'your-actual-supabase-anon-key'
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4ZG55YXZjeG91dXR3a3Zkb2VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcwNjE0MDQsImV4cCI6MjA2MjYzNzQwNH0.y07v2koScA07iztFr366pB5f5n5UCCzc_Agn228dujI'
 );
 
 async function checkSession() {
