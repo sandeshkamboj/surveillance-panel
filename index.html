@@ -3,30 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Surveillance Control Panel</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Surveillance Panel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body>
-    <div class="container">
-        <h1>Surveillance Control Panel</h1>
-        <div id="auth">
-            <input type="email" id="email" placeholder="Email">
-            <input type="password" id="password" placeholder="Password">
-            <button onclick="login()">Login</button>
+<body class="bg-light">
+    <div class="container py-5">
+        <h1 class="text-center">Surveillance Panel</h1>
+        <div id="login-section" class="text-center py-4">
+            <input id="email" type="email" class="form-control mb-2" placeholder="Email">
+            <input id="password" type="password" class="form-control mb-2" placeholder="Password">
+            <button id="login" class="btn btn-primary">Login</button>
+            <div id="error-message" class="text-danger mt-2"></div>
         </div>
-        <div id="controls" style="display: none;">
-            <h2>Commands</h2>
-            <button onclick="sendCommand('capturePhoto', { camera: 'back', flash: false })">Capture Photo</button>
-            <button onclick="sendCommand('recordVideo', { camera: 'back', quality: 'medium', duration: 10000 })">Record Video</button>
-            <button onclick="sendCommand('recordAudio', { duration: 10000 })">Record Audio</button>
-            <button onclick="sendCommand('getLocation')">Get Location</button>
-            <button onclick="sendCommand('ring', { duration: 5000 })">Ring</button>
-            <button onclick="sendCommand('vibrate', { duration: 1000 })">Vibrate</button>
-            <button onclick="logout()">Logout</button>
+        <div id="commands-section" class="text-center py-4 d-none">
+            <button id="capturePhoto" class="btn btn-success mb-2">Capture Photo</button>
+            <button id="recordVideo" class="btn btn-success mb-2">Record Video</button>
+            <button id="recordAudio" class="btn btn-success mb-2">Record Audio</button>
+            <button id="getLocation" class="btn btn-success mb-2">Get Location</button>
+            <button id="ring" class="btn btn-success mb-2">Ring</button>
+            <button id="vibrate" class="btn btn-success mb-2">Vibrate</button>
+            <button id="logout" class="btn btn-danger mt-2">Logout</button>
         </div>
-        <p id="status"></p>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-    <script src="script.js"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>
