@@ -2,7 +2,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 // Initialize Supabase client
 const supabaseUrl = 'https://yxdnyavcxouutwkvdoef.supabase.co';
-const supabaseKey = 'your-supabase-anon-key'; // Replace with your anon key
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4ZG55YXZjeG91dXR3a3Zkb2VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcwNjE0MDQsImV4cCI6MjA2MjYzNzQwNH0.y07v2koScA07iztFr366pB5f5n5UCCzc_Agn228dujI'; // Replace with your anon key
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 console.log('Supabase initialized');
