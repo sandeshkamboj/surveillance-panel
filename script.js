@@ -9,10 +9,18 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
 });
 console.log('Supabase initialized');
 
-// Pagination state
+// Pagination and filter state
 let currentPage = 1;
 let filesPerPage = 10;
 let totalFiles = 0;
+let fileTypeFilter = '';
+let fileDateStart = '';
+let fileDateEnd = '';
+let showAllLocations = false;
+
+// Map state
+let map = null;
+let markers = [];
 
 // UI Utility Functions
 function showLoginSection() {
@@ -72,7 +80,7 @@ function updatePagination() {
     // Previous button
     const prevLi = document.createElement('li');
     prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
-    prevLi.innerHTML = `<a class="page-link" href="#" aria-label="Previous"><span aria-hidden="true">&laquo;</span></a>`;
+    prevLi.innerHTML = `<a class="page-link" href="#" aria-label="Previous"><span aria-hidden="true">«</span></a>`;
     prevLi.addEventListener('click', (e) => {
         e.preventDefault();
         if (currentPage > 1) {
@@ -98,7 +106,7 @@ function updatePagination() {
     // Next button
     const nextLi = document.createElement('li');
     nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
-    nextLi.innerHTML = `<a class="page-link" href="#" aria-label="Next"><span aria-hidden="true">&raquo;</span></a>`;
+    nextLi.innerHTML = `<a class="page-link" href="#" aria-label="Next"><span aria-hidden="true">»</span></a>`;
     nextLi.addEventListener('click', (e) => {
         e.preventDefault();
         if (currentPage < totalPages) {
@@ -107,6 +115,46 @@ function updatePagination() {
         }
     });
     pagination.appendChild(nextLi);
+}
+
+function initializeMap() {
+    if (map) return;
+    map = L.map('location-map').setView([0, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+}
+
+function updateMap(locations) {
+    // Clear existing markers
+    markers.forEach(marker => marker.remove());
+    markers = [];
+
+    if (locations.length === 0) {
+        document.getElementById('location-data').textContent = 'No location data available';
+        map.setView([0, 0], 2);
+        return;
+    }
+
+    // Add new markers
+    locations.forEach(loc => {
+        const marker = L.marker([loc.latitude, loc.longitude])
+            .addTo(map)
+            .bindPopup(`Lat: ${loc.latitude}<br>Lon: ${loc.longitude}<br>Time: ${new Date(loc.created_at).toLocaleString()}`);
+        markers.push(marker);
+    });
+
+    // Fit map to bounds or center on single location
+    if (locations.length === 1) {
+        map.setView([locations[0].latitude, locations[0].longitude], 13);
+    } else {
+        const group = L.featureGroup(markers);
+        map.fitBounds(group.getBounds());
+    }
+
+    // Update text data
+    const latest = locations[0];
+    document.getElementById('location-data').innerHTML = `Latest: Latitude: ${latest.latitude}, Longitude: ${latest.longitude}<br>Recorded: ${new Date(latest.created_at).toLocaleString()}`;
 }
 
 // Validation Functions
@@ -164,6 +212,7 @@ async function login(email, password) {
         showCommandsSection();
         await Promise.all([loadFiles(), loadLastLocation()]);
         setupRealtimeSubscriptions();
+        initializeMap();
     } catch (error) {
         console.error('Login failed:', error);
         document.getElementById('error-message').textContent = `Login failed: ${error.message}`;
@@ -197,12 +246,25 @@ async function loadFiles() {
     try {
         const { data: user, error: userError } = await supabase.auth.getUser();
         if (userError || !user.user) throw new Error('Not authenticated');
-        const { data: files, count, error } = await supabase
+        let query = supabase
             .from('files')
             .select('*', { count: 'exact' })
             .eq('user_id', user.user.id)
             .order('created_at', { ascending: false })
             .range((currentPage - 1) * filesPerPage, currentPage * filesPerPage - 1);
+
+        // Apply filters
+        if (fileTypeFilter) {
+            query = query.eq('type', fileTypeFilter);
+        }
+        if (fileDateStart) {
+            query = query.gte('created_at', `${fileDateStart}T00:00:00Z`);
+        }
+        if (fileDateEnd) {
+            query = query.lte('created_at', `${fileDateEnd}T23:59:59Z`);
+        }
+
+        const { data: files, count, error } = await query;
         if (error) throw new Error(error.message);
 
         totalFiles = count || files.length;
@@ -250,8 +312,14 @@ async function deleteFile(id, path, bucket) {
         if (dbError) throw new Error(dbError.message);
         console.log(`File deleted: ${path}`);
         await loadFiles();
+        document.getElementById('files-error').classList.remove('text-danger');
+        document.getElementById('files-error').classList.add('text-success');
         document.getElementById('files-error').textContent = 'File deleted successfully';
-        setTimeout(() => document.getElementById('files-error').textContent = '', 3000);
+        setTimeout(() => {
+            document.getElementById('files-error').textContent = '';
+            document.getElementById('files-error').classList.remove('text-success');
+            document.getElementById('files-error').classList.add('text-danger');
+        }, 3000);
     } catch (error) {
         console.error('Delete file failed:', error);
         document.getElementById('error-message').textContent = `Delete file failed: ${error.message}`;
@@ -263,20 +331,19 @@ async function loadLastLocation() {
     try {
         const { data: user, error: userError } = await supabase.auth.getUser();
         if (userError || !user.user) throw new Error('Not authenticated');
-        const { data: locations, error } = await supabase
+        let query = supabase
             .from('locations')
             .select('latitude, longitude, created_at')
             .eq('user_id', user.user.id)
-            .order('created_at', { ascending: false })
-            .limit(1);
-        if (error) throw new Error(error.message);
-        const locationData = document.getElementById('location-data');
-        if (locations.length > 0) {
-            const { latitude, longitude, created_at } = locations[0];
-            locationData.innerHTML = `Latitude: ${latitude}, Longitude: ${longitude}<br>Recorded: ${new Date(created_at).toLocaleString()}`;
-        } else {
-            locationData.textContent = 'No location data available';
+            .order('created_at', { ascending: false });
+        
+        if (!showAllLocations) {
+            query = query.limit(1);
         }
+
+        const { data: locations, error } = await query;
+        if (error) throw new Error(error.message);
+        updateMap(locations);
     } catch (error) {
         console.error('Load location failed:', error);
         showSectionError('location', `Load location failed: ${error.message}`);
@@ -391,6 +458,30 @@ document.getElementById('files-per-page').addEventListener('change', (e) => {
     loadFiles();
 });
 
+document.getElementById('file-type-filter').addEventListener('change', (e) => {
+    fileTypeFilter = e.target.value;
+    currentPage = 1;
+    loadFiles();
+});
+
+document.getElementById('file-date-start').addEventListener('change', (e) => {
+    fileDateStart = e.target.value;
+    currentPage = 1;
+    loadFiles();
+});
+
+document.getElementById('file-date-end').addEventListener('change', (e) => {
+    fileDateEnd = e.target.value;
+    currentPage = 1;
+    loadFiles();
+});
+
+document.getElementById('toggle-location-view').addEventListener('click', () => {
+    showAllLocations = !showAllLocations;
+    document.getElementById('toggle-location-view').textContent = showAllLocations ? 'Show Latest Location' : 'Show All Locations';
+    loadLastLocation();
+});
+
 // Delete Confirmation
 let pendingDelete = null;
 document.addEventListener('click', (e) => {
@@ -430,5 +521,6 @@ supabase.auth.getSession().then(({ data: { session } }) => {
         loadFiles();
         loadLastLocation();
         setupRealtimeSubscriptions();
+        initializeMap();
     }
 });
