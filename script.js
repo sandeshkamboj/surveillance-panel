@@ -2,56 +2,144 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 // Initialize Supabase client
 const supabaseUrl = 'https://yxdnyavcxouutwkvdoef.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4ZG55YXZjeG91dXR3a3Zkb2VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcwNjE0MDQsImV4cCI6MjA2MjYzNzQwNH0.y07v2koScA07iztFr366pB5f5n5UCCzc_Agn228dujI'; // Replace with your anon key
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4ZG55YXZjeG91dXR3a3Zkb2VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcwNjE0MDQsImV4cCI6MjA2MjYzNzQwNH0.y07v2koScA07iztFr366pB5f5n5UCCzc_Agn228dujI';
 const supabase = createClient(supabaseUrl, supabaseKey);
-
 console.log('Supabase initialized');
 
-// Toggle sections
+// UI Utility Functions
 function showLoginSection() {
     document.getElementById('login-section').classList.remove('d-none');
     document.getElementById('commands-section').classList.add('d-none');
-    document.getElementById('error-message').textContent = '';
+    clearMessages();
 }
 
 function showCommandsSection() {
     document.getElementById('login-section').classList.add('d-none');
     document.getElementById('commands-section').classList.remove('d-none');
-    document.getElementById('error-message').textContent = '';
+    clearMessages();
 }
 
-// Login
-async function login(email, password) {
-    try {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw new Error(error.message);
-        console.log('Login successful:', data);
-        showCommandsSection();
-        await loadFiles();
-        await loadLastLocation();
-    } catch (error) {
-        console.error('Login failed:', error);
-        document.getElementById('error-message').textContent = `Login failed: ${error.message}`;
+function showLoading(buttonId, show) {
+    const button = document.getElementById(buttonId);
+    const spinner = button.querySelector('.spinner-border');
+    const text = button.querySelector('span:first-child');
+    button.disabled = show;
+    spinner.classList.toggle('d-none', !show);
+    text.classList.toggle('d-none', show);
+}
+
+function showSectionLoading(sectionId, show) {
+    const loading = document.getElementById(`${sectionId}-loading`);
+    const error = document.getElementById(`${sectionId}-error`);
+    const retry = document.getElementById(`retry-${sectionId}`);
+    loading.classList.toggle('d-none', !show);
+    error.classList.add('d-none');
+    retry.classList.add('d-none');
+}
+
+function showSectionError(sectionId, message) {
+    const loading = document.getElementById(`${sectionId}-loading`);
+    const error = document.getElementById(`${sectionId}-error`);
+    const retry = document.getElementById(`retry-${sectionId}`);
+    loading.classList.add('d-none');
+    error.textContent = message;
+    error.classList.remove('d-none');
+    retry.classList.remove('d-none');
+}
+
+function clearMessages() {
+    document.getElementById('error-message').textContent = '';
+    document.getElementById('retry-login').classList.add('d-none');
+    ['files', 'location'].forEach(section => {
+        document.getElementById(`${section}-error`).textContent = '';
+        document.getElementById(`retry-${section}`).classList.add('d-none');
+    });
+}
+
+// Validation Functions
+function validateEmail(email) {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+}
+
+function validateCommandOptions(type, options) {
+    switch (type) {
+        case 'capturePhoto':
+            return options.camera && ['rear', 'front'].includes(options.camera) &&
+                   options.flash && ['on', 'off'].includes(options.flash);
+        case 'recordVideo':
+            return options.camera && ['rear', 'front'].includes(options.camera) &&
+                   options.quality && ['low', 'medium', 'high'].includes(options.quality) &&
+                   options.duration && [5, 10, 30].includes(Number(options.duration));
+        case 'recordAudio':
+            return options.duration && [5, 10, 30].includes(Number(options.duration));
+        case 'ring':
+        case 'vibrate':
+            return options.duration && Number.isInteger(Number(options.duration));
+        case 'getLocation':
+        case 'batchLocations':
+            return true;
+        default:
+            return false;
     }
 }
 
-// Send command
+// Session Management
+function saveSession(session) {
+    sessionStorage.setItem('supabase_session', JSON.stringify(session));
+}
+
+function getSession() {
+    const session = sessionStorage.getItem('supabase_session');
+    return session ? JSON.parse(session) : null;
+}
+
+function clearSession() {
+    sessionStorage.removeItem('supabase_session');
+}
+
+// Supabase Operations
+async function login(email, password) {
+    showLoading('login', true);
+    try {
+        if (!validateEmail(email)) throw new Error('Invalid email format');
+        if (password.length < 6) throw new Error('Password must be at least 6 characters');
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw new Error(error.message);
+        console.log('Login successful:', data);
+        saveSession(data.session);
+        showCommandsSection();
+        await Promise.all([loadFiles(), loadLastLocation()]);
+    } catch (error) {
+        console.error('Login failed:', error);
+        document.getElementById('error-message').textContent = `Login failed: ${error.message}`;
+        document.getElementById('retry-login').classList.remove('d-none');
+    } finally {
+        showLoading('login', false);
+    }
+}
+
 async function sendCommand(type, options = {}) {
+    showLoading(type === 'batchLocations' ? 'batchLocations' : type, true);
     try {
         const { data: user, error: userError } = await supabase.auth.getUser();
         if (userError || !user.user) throw new Error('Not authenticated');
+        if (!validateCommandOptions(type, options)) throw new Error('Invalid command options');
         const command = { user_id: user.user.id, type, options };
         const { error } = await supabase.from('commands').insert(command);
         if (error) throw new Error(error.message);
         console.log(`Command sent: ${type}`, options);
+        if (type === 'getLocation') await loadLastLocation();
     } catch (error) {
         console.error('Command failed:', error);
         document.getElementById('error-message').textContent = `Command failed: ${error.message}`;
+    } finally {
+        showLoading(type === 'batchLocations' ? 'batchLocations' : type, false);
     }
 }
 
-// Load files
 async function loadFiles() {
+    showSectionLoading('files', true);
     try {
         const { data: user, error: userError } = await supabase.auth.getUser();
         if (userError || !user.user) throw new Error('Not authenticated');
@@ -66,46 +154,46 @@ async function loadFiles() {
         tbody.innerHTML = '';
         for (const file of files) {
             const { data: signedUrl } = await supabase.storage
-                .from(file.type + 's')
-                .createSignedUrl(file.path.split('/').pop(), 60);
+                .from(file.bucket)
+                .createSignedUrl(file.path, 60);
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${file.type}</td>
                 <td>${
-                    file.type === 'photo' ? `<img src="${signedUrl.signedUrl}" alt="${file.path}">` :
-                    file.type === 'video' ? `<video src="${signedUrl.signedUrl}" controls></video>` :
-                    `<audio src="${signedUrl.signedUrl}" controls></audio>`
+                    file.type === 'photo' ? `<img src="${signedUrl.signedUrl}" alt="${file.path}" class="img-fluid">` :
+                    file.type === 'video' ? `<video src="${signedUrl.signedUrl}" controls class="media"></video>` :
+                    `<audio src="${signedUrl.signedUrl}" controls class="media"></audio>`
                 }</td>
                 <td>${file.path}</td>
                 <td>
-                    <a href="${signedUrl.signedUrl}" download class="btn btn-sm btn-primary">Download</a>
-                    <button class="btn btn-sm btn-danger delete-btn" data-id="${file.id}" data-path="${file.path}" data-type="${file.type}">Delete</button>
+                    <a href="${signedUrl.signedUrl}" download class="btn btn-sm btn-primary me-1">Download</a>
+                    <button class="btn btn-sm btn-danger delete-btn" data-id="${file.id}" data-path="${file.path}" data-bucket="${file.bucket}">Delete</button>
                 </td>
             `;
             tbody.appendChild(row);
         }
 
-        // Add delete event listeners
         document.querySelectorAll('.delete-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const id = btn.dataset.id;
                 const path = btn.dataset.path;
-                const type = btn.dataset.type;
-                await deleteFile(id, path, type);
+                const bucket = btn.dataset.bucket;
+                await deleteFile(id, path, bucket);
             });
         });
     } catch (error) {
         console.error('Load files failed:', error);
-        document.getElementById('error-message').textContent = `Load files failed: ${error.message}`;
+        showSectionError('files', `Load files failed: ${error.message}`);
+    } finally {
+        showSectionLoading('files', false);
     }
 }
 
-// Delete file
-async function deleteFile(id, path, type) {
+async function deleteFile(id, path, bucket) {
     try {
         const { error: storageError } = await supabase.storage
-            .from(type + 's')
-            .remove([path.split('/').pop()]);
+            .from(bucket)
+            .remove([path]);
         if (storageError) throw new Error(storageError.message);
         const { error: dbError } = await supabase
             .from('files')
@@ -120,8 +208,8 @@ async function deleteFile(id, path, type) {
     }
 }
 
-// Load last location
 async function loadLastLocation() {
+    showSectionLoading('location', true);
     try {
         const { data: user, error: userError } = await supabase.auth.getUser();
         if (userError || !user.user) throw new Error('Not authenticated');
@@ -141,21 +229,39 @@ async function loadLastLocation() {
         }
     } catch (error) {
         console.error('Load location failed:', error);
-        document.getElementById('error-message').textContent = `Load location failed: ${error.message}`;
+        showSectionError('location', `Load location failed: ${error.message}`);
+    } finally {
+        showSectionLoading('location', false);
     }
 }
 
-// Event listeners
-document.getElementById('login').addEventListener('click', async () => {
-    const email = document.getElementById('email').value;
+// Event Listeners
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    await login(email, password);
+});
+
+document.getElementById('retry-login').addEventListener('click', async () => {
+    const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
     await login(email, password);
 });
 
 document.getElementById('logout').addEventListener('click', async () => {
-    await supabase.auth.signOut();
-    showLoginSection();
-    document.getElementById('error-message').textContent = 'Logged out';
+    showLoading('logout', true);
+    try {
+        await supabase.auth.signOut();
+        clearSession();
+        showLoginSection();
+        document.getElementById('error-message').textContent = 'Logged out successfully';
+    } catch (error) {
+        console.error('Logout failed:', error);
+        document.getElementById('error-message').textContent = `Logout failed: ${error.message}`;
+    } finally {
+        showLoading('logout', false);
+    }
 });
 
 document.getElementById('capturePhoto').addEventListener('click', async () => {
@@ -178,7 +284,10 @@ document.getElementById('recordAudio').addEventListener('click', async () => {
 
 document.getElementById('getLocation').addEventListener('click', async () => {
     await sendCommand('getLocation');
-    await loadLastLocation();
+});
+
+document.getElementById('batchLocations').addEventListener('click', async () => {
+    await sendCommand('batchLocations');
 });
 
 document.getElementById('ring').addEventListener('click', async () => {
@@ -189,9 +298,23 @@ document.getElementById('vibrate').addEventListener('click', async () => {
     await sendCommand('vibrate', { duration: 1 });
 });
 
-// Load files and location on page load if authenticated
+document.getElementById('retry-files').addEventListener('click', loadFiles);
+document.getElementById('retry-location').addEventListener('click', loadLastLocation);
+
+// Form Validation for Login Button
+function updateLoginButtonState() {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const loginButton = document.getElementById('login');
+    loginButton.disabled = !validateEmail(email) || password.length < 6;
+}
+
+document.getElementById('email').addEventListener('input', updateLoginButtonState);
+document.getElementById('password').addEventListener('input', updateLoginButtonState);
+
+// Check for existing session
 supabase.auth.getSession().then(({ data: { session } }) => {
-    if (session) {
+    if (session || getSession()) {
         showCommandsSection();
         loadFiles();
         loadLastLocation();
