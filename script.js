@@ -3,8 +3,16 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 // Initialize Supabase client
 const supabaseUrl = 'https://yxdnyavcxouutwkvdoef.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4ZG55YXZjeG91dXR3a3Zkb2VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcwNjE0MDQsImV4cCI6MjA2MjYzNzQwNH0.y07v2koScA07iztFr366pB5f5n5UCCzc_Agn228dujI';
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(supabaseUrl, supabaseKey, {
+    auth: { autoRefreshToken: true },
+    realtime: { params: { eventsPerSecond: 10 } }
+});
 console.log('Supabase initialized');
+
+// Pagination state
+let currentPage = 1;
+let filesPerPage = 10;
+let totalFiles = 0;
 
 // UI Utility Functions
 function showLoginSection() {
@@ -54,6 +62,51 @@ function clearMessages() {
         document.getElementById(`${section}-error`).textContent = '';
         document.getElementById(`retry-${section}`).classList.add('d-none');
     });
+}
+
+function updatePagination() {
+    const totalPages = Math.ceil(totalFiles / filesPerPage);
+    const pagination = document.getElementById('files-pagination');
+    pagination.innerHTML = '';
+    
+    // Previous button
+    const prevLi = document.createElement('li');
+    prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+    prevLi.innerHTML = `<a class="page-link" href="#" aria-label="Previous"><span aria-hidden="true">&laquo;</span></a>`;
+    prevLi.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (currentPage > 1) {
+            currentPage--;
+            loadFiles();
+        }
+    });
+    pagination.appendChild(prevLi);
+
+    // Page numbers
+    for (let i = 1; i <= totalPages; i++) {
+        const li = document.createElement('li');
+        li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+        li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+        li.addEventListener('click', (e) => {
+            e.preventDefault();
+            currentPage = i;
+            loadFiles();
+        });
+        pagination.appendChild(li);
+    }
+
+    // Next button
+    const nextLi = document.createElement('li');
+    nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+    nextLi.innerHTML = `<a class="page-link" href="#" aria-label="Next"><span aria-hidden="true">&raquo;</span></a>`;
+    nextLi.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (currentPage < totalPages) {
+            currentPage++;
+            loadFiles();
+        }
+    });
+    pagination.appendChild(nextLi);
 }
 
 // Validation Functions
@@ -110,6 +163,7 @@ async function login(email, password) {
         saveSession(data.session);
         showCommandsSection();
         await Promise.all([loadFiles(), loadLastLocation()]);
+        setupRealtimeSubscriptions();
     } catch (error) {
         console.error('Login failed:', error);
         document.getElementById('error-message').textContent = `Login failed: ${error.message}`;
@@ -143,13 +197,15 @@ async function loadFiles() {
     try {
         const { data: user, error: userError } = await supabase.auth.getUser();
         if (userError || !user.user) throw new Error('Not authenticated');
-        const { data: files, error } = await supabase
+        const { data: files, count, error } = await supabase
             .from('files')
-            .select('*')
+            .select('*', { count: 'exact' })
             .eq('user_id', user.user.id)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .range((currentPage - 1) * filesPerPage, currentPage * filesPerPage - 1);
         if (error) throw new Error(error.message);
 
+        totalFiles = count || files.length;
         const tbody = document.getElementById('files-table');
         tbody.innerHTML = '';
         for (const file of files) {
@@ -167,20 +223,12 @@ async function loadFiles() {
                 <td>${file.path}</td>
                 <td>
                     <a href="${signedUrl.signedUrl}" download class="btn btn-sm btn-primary me-1">Download</a>
-                    <button class="btn btn-sm btn-danger delete-btn" data-id="${file.id}" data-path="${file.path}" data-bucket="${file.bucket}">Delete</button>
+                    <button class="btn btn-sm btn-danger delete-btn" data-id="${file.id}" data-path="${file.path}" data-bucket="${file.bucket}" data-bs-toggle="modal" data-bs-target="#deleteConfirmModal">Delete</button>
                 </td>
             `;
             tbody.appendChild(row);
         }
-
-        document.querySelectorAll('.delete-btn').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                const id = btn.dataset.id;
-                const path = btn.dataset.path;
-                const bucket = btn.dataset.bucket;
-                await deleteFile(id, path, bucket);
-            });
-        });
+        updatePagination();
     } catch (error) {
         console.error('Load files failed:', error);
         showSectionError('files', `Load files failed: ${error.message}`);
@@ -202,6 +250,8 @@ async function deleteFile(id, path, bucket) {
         if (dbError) throw new Error(dbError.message);
         console.log(`File deleted: ${path}`);
         await loadFiles();
+        document.getElementById('files-error').textContent = 'File deleted successfully';
+        setTimeout(() => document.getElementById('files-error').textContent = '', 3000);
     } catch (error) {
         console.error('Delete file failed:', error);
         document.getElementById('error-message').textContent = `Delete file failed: ${error.message}`;
@@ -235,6 +285,38 @@ async function loadLastLocation() {
     }
 }
 
+function setupRealtimeSubscriptions() {
+    const userId = supabase.auth.getUser().then(({ data: { user } }) => user?.id).catch(() => null);
+    
+    // Files subscription
+    const filesChannel = supabase.channel('files-channel');
+    filesChannel
+        .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'files',
+            filter: `user_id=eq.${userId}`
+        }, () => {
+            console.log('Files table changed, reloading files');
+            loadFiles();
+        })
+        .subscribe((status) => console.log('Files channel status:', status));
+
+    // Locations subscription
+    const locationsChannel = supabase.channel('locations-channel');
+    locationsChannel
+        .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'locations',
+            filter: `user_id=eq.${userId}`
+        }, () => {
+            console.log('New location added, reloading location');
+            loadLastLocation();
+        })
+        .subscribe((status) => console.log('Locations channel status:', status));
+}
+
 // Event Listeners
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -253,6 +335,8 @@ document.getElementById('logout').addEventListener('click', async () => {
     showLoading('logout', true);
     try {
         await supabase.auth.signOut();
+        supabase.channel('files-channel').unsubscribe();
+        supabase.channel('locations-channel').unsubscribe();
         clearSession();
         showLoginSection();
         document.getElementById('error-message').textContent = 'Logged out successfully';
@@ -301,6 +385,33 @@ document.getElementById('vibrate').addEventListener('click', async () => {
 document.getElementById('retry-files').addEventListener('click', loadFiles);
 document.getElementById('retry-location').addEventListener('click', loadLastLocation);
 
+document.getElementById('files-per-page').addEventListener('change', (e) => {
+    filesPerPage = parseInt(e.target.value);
+    currentPage = 1;
+    loadFiles();
+});
+
+// Delete Confirmation
+let pendingDelete = null;
+document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('delete-btn')) {
+        pendingDelete = {
+            id: e.target.dataset.id,
+            path: e.target.dataset.path,
+            bucket: e.target.dataset.bucket
+        };
+    }
+});
+
+document.getElementById('confirmDelete').addEventListener('click', async () => {
+    if (pendingDelete) {
+        await deleteFile(pendingDelete.id, pendingDelete.path, pendingDelete.bucket);
+        pendingDelete = null;
+        const modal = bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal'));
+        modal.hide();
+    }
+});
+
 // Form Validation for Login Button
 function updateLoginButtonState() {
     const email = document.getElementById('email').value.trim();
@@ -318,5 +429,6 @@ supabase.auth.getSession().then(({ data: { session } }) => {
         showCommandsSection();
         loadFiles();
         loadLastLocation();
+        setupRealtimeSubscriptions();
     }
 });
