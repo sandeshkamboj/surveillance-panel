@@ -171,9 +171,9 @@ function validateCommandOptions(type, options) {
         case 'recordVideo':
             return options.camera && ['rear', 'front'].includes(options.camera) &&
                    options.quality && ['low', 'medium', 'high'].includes(options.quality) &&
-                   options.duration && [5, 10, 30].includes(Number(options.duration));
+                   options.duration && [60, 120, 300].includes(Number(options.duration));
         case 'recordAudio':
-            return options.duration && [5, 10, 30].includes(Number(options.duration));
+            return options.duration && [60, 120, 300, 600].includes(Number(options.duration));
         case 'ring':
         case 'vibrate':
             return options.duration && Number.isInteger(Number(options.duration));
