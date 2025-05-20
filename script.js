@@ -1,15 +1,13 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-// Initialize Supabase client
 const supabaseUrl = 'https://yxdnyavcxouutwkvdoef.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4ZG55YXZjeG91dXR3a3Zkb2VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcwNjE0MDQsImV4cCI6MjA2MjYzNzQwNH0.y07v2koScA07iztFr366pB5f5n5UCCzc_Agn228dujI'
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4ZG55YXZjeG91dXR3a3Zkb2VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcwNjE0MDQsImV4cCI6MjA2MjYzNzQwNH0.y07v2koScA07iz[...]'
 const supabase = createClient(supabaseUrl, supabaseKey, {
     auth: { autoRefreshToken: true },
     realtime: { params: { eventsPerSecond: 10 } }
 });
 console.log('Supabase initialized');
 
-// Pagination and filter state
 let currentPage = 1;
 let filesPerPage = 10;
 let totalFiles = 0;
@@ -18,11 +16,9 @@ let fileDateStart = '';
 let fileDateEnd = '';
 let showAllLocations = false;
 
-// Map state
 let map = null;
 let markers = [];
 
-// UI Utility Functions
 function showLoginSection() {
     document.getElementById('login-section').classList.remove('d-none');
     document.getElementById('commands-section').classList.add('d-none');
@@ -83,7 +79,6 @@ function updatePagination() {
     const pagination = document.getElementById('files-pagination');
     pagination.innerHTML = '';
 
-    // Previous button
     const prevLi = document.createElement('li');
     prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
     prevLi.innerHTML = `<a class="page-link" href="#" aria-label="Previous"><span aria-hidden="true">«</span></a>`;
@@ -96,7 +91,6 @@ function updatePagination() {
     });
     pagination.appendChild(prevLi);
 
-    // Page numbers
     for (let i = 1; i <= totalPages; i++) {
         const li = document.createElement('li');
         li.className = `page-item ${i === currentPage ? 'active' : ''}`;
@@ -109,7 +103,6 @@ function updatePagination() {
         pagination.appendChild(li);
     }
 
-    // Next button
     const nextLi = document.createElement('li');
     nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
     nextLi.innerHTML = `<a class="page-link" href="#" aria-label="Next"><span aria-hidden="true">»</span></a>`;
@@ -134,40 +127,31 @@ function initializeMap() {
 }
 
 function updateMap(locations) {
-    // Clear existing markers
     markers.forEach(marker => marker.remove());
     markers = [];
-
     if (locations.length === 0) {
         document.getElementById('location-data').textContent = 'No location data available';
         map.setView([0, 0], 2);
         console.log('No locations available to show on map');
         return;
     }
-
-    // Add new markers
     locations.forEach(loc => {
         const marker = L.marker([loc.latitude, loc.longitude])
             .addTo(map)
             .bindPopup(`Lat: ${loc.latitude}<br>Lon: ${loc.longitude}<br>Time: ${new Date(loc.created_at).toLocaleString()}`);
         markers.push(marker);
     });
-
-    // Fit map to bounds or center on single location
     if (locations.length === 1) {
         map.setView([locations[0].latitude, locations[0].longitude], 13);
     } else {
         const group = L.featureGroup(markers);
         map.fitBounds(group.getBounds());
     }
-
-    // Update text data
     const latest = locations[0];
     document.getElementById('location-data').innerHTML = `Latest: Latitude: ${latest.latitude}, Longitude: ${latest.longitude}<br>Recorded: ${new Date(latest.created_at).toLocaleString()}`;
     console.log(`${locations.length} location(s) updated on map`);
 }
 
-// Validation Functions
 function validateEmail(email) {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(email);
@@ -195,7 +179,6 @@ function validateCommandOptions(type, options) {
     }
 }
 
-// Session Management
 function saveSession(session) {
     sessionStorage.setItem('supabase_session', JSON.stringify(session));
     console.log('Session saved');
@@ -212,7 +195,6 @@ function clearSession() {
     console.log('Session cleared');
 }
 
-// Supabase Operations
 async function login(email, password) {
     showLoading('login', true);
     try {
@@ -266,16 +248,9 @@ async function loadFiles() {
             .order('created_at', { ascending: false })
             .range((currentPage - 1) * filesPerPage, currentPage * filesPerPage - 1);
 
-        // Apply filters
-        if (fileTypeFilter) {
-            query = query.eq('type', fileTypeFilter);
-        }
-        if (fileDateStart) {
-            query = query.gte('created_at', `${fileDateStart}T00:00:00Z`);
-        }
-        if (fileDateEnd) {
-            query = query.lte('created_at', `${fileDateEnd}T23:59:59Z`);
-        }
+        if (fileTypeFilter) query = query.eq('type', fileTypeFilter);
+        if (fileDateStart) query = query.gte('created_at', `${fileDateStart}T00:00:00Z`);
+        if (fileDateEnd) query = query.lte('created_at', `${fileDateEnd}T23:59:59Z`);
 
         const { data: files, count, error } = await query;
         if (error) throw new Error(error.message);
@@ -351,9 +326,7 @@ async function loadLastLocation() {
             .eq('user_id', user.user.id)
             .order('created_at', { ascending: false });
 
-        if (!showAllLocations) {
-            query = query.limit(1);
-        }
+        if (!showAllLocations) query = query.limit(1);
 
         const { data: locations, error } = await query;
         if (error) throw new Error(error.message);
@@ -370,7 +343,6 @@ async function loadLastLocation() {
 function setupRealtimeSubscriptions() {
     const userId = supabase.auth.getUser().then(({ data: { user } }) => user?.id).catch(() => null);
 
-    // Files subscription
     const filesChannel = supabase.channel('files-channel');
     filesChannel
         .on('postgres_changes', {
@@ -384,7 +356,6 @@ function setupRealtimeSubscriptions() {
         })
         .subscribe((status) => console.log('Files channel status:', status));
 
-    // Locations subscription
     const locationsChannel = supabase.channel('locations-channel');
     locationsChannel
         .on('postgres_changes', {
@@ -400,7 +371,6 @@ function setupRealtimeSubscriptions() {
     console.log('Realtime subscriptions set up');
 }
 
-// Event Listeners
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('email').value.trim();
@@ -542,10 +512,9 @@ document.getElementById('confirmDelete').addEventListener('click', async () => {
     }
 });
 
-// The login button is ALWAYS enabled (no validation disables it)
+// The login button is ALWAYS enabled
 document.getElementById('login').disabled = false;
 
-// Check for existing session
 supabase.auth.getSession().then(({ data: { session } }) => {
     if (session || getSession()) {
         console.log('Existing session found, loading dashboard');
