@@ -1,52 +1,40 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
+// Initialize Supabase client
 const supabaseUrl = 'https://yxdnyavcxouutwkvdoef.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4ZG55YXZjeG91dXR3a3Zkb2VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcwNjE0MDQsImV4cCI6MjA2MjYzNzQwNH0.y07v2koScA07iztFr366pB5f5n5UCCzc_Agn228dujI';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4ZG55YXZjeG91dXR3a3Zkb2VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcwNjE0MDQsImV4cCI6MjA2MjYzNzQwNH0.y07v2koScA07iztFr366pB5f5n5UCCzc_Agn228dujI'
 const supabase = createClient(supabaseUrl, supabaseKey, {
     auth: { autoRefreshToken: true },
     realtime: { params: { eventsPerSecond: 10 } }
 });
+console.log('Supabase initialized');
 
+// Pagination and filter state
 let currentPage = 1;
 let filesPerPage = 10;
 let totalFiles = 0;
 let fileTypeFilter = '';
 let fileDateStart = '';
 let fileDateEnd = '';
+let showAllLocations = false;
+
+// Map state
 let map = null;
 let markers = [];
 
-function showToast(message, type = 'success') {
-    const toastContainer = document.getElementById('toast-container');
-    const id = 'toast-' + Date.now();
-    const bg = type === 'success' ? 'bg-success' : type === 'error' ? 'bg-danger' : 'bg-info';
-    const toast = document.createElement('div');
-    toast.className = `toast align-items-center text-white ${bg} border-0 mb-2`;
-    toast.id = id;
-    toast.setAttribute('role', 'alert');
-    toast.setAttribute('aria-live', 'polite');
-    toast.innerHTML = `
-        <div class="d-flex">
-            <div class="toast-body">${message}</div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-    `;
-    toastContainer.appendChild(toast);
-    const bsToast = new bootstrap.Toast(toast, { delay: 3000 });
-    bsToast.show();
-    toast.addEventListener('hidden.bs.toast', () => toast.remove());
-}
-
+// UI Utility Functions
 function showLoginSection() {
     document.getElementById('login-section').classList.remove('d-none');
     document.getElementById('commands-section').classList.add('d-none');
     clearMessages();
+    console.log('Showing login section');
 }
 
 function showCommandsSection() {
     document.getElementById('login-section').classList.add('d-none');
     document.getElementById('commands-section').classList.remove('d-none');
     clearMessages();
+    console.log('Showing commands section');
 }
 
 function showLoading(buttonId, show) {
@@ -56,6 +44,7 @@ function showLoading(buttonId, show) {
     button.disabled = show;
     spinner.classList.toggle('d-none', !show);
     text.classList.toggle('d-none', show);
+    console.log(`Button ${buttonId} loading: ${show}`);
 }
 
 function showSectionLoading(sectionId, show) {
@@ -65,6 +54,7 @@ function showSectionLoading(sectionId, show) {
     loading.classList.toggle('d-none', !show);
     error.classList.add('d-none');
     retry.classList.add('d-none');
+    console.log(`Section ${sectionId} loading: ${show}`);
 }
 
 function showSectionError(sectionId, message) {
@@ -75,6 +65,7 @@ function showSectionError(sectionId, message) {
     error.textContent = message;
     error.classList.remove('d-none');
     retry.classList.remove('d-none');
+    console.log(`Section ${sectionId} error: ${message}`);
 }
 
 function clearMessages() {
@@ -84,6 +75,7 @@ function clearMessages() {
         document.getElementById(`${section}-error`).textContent = '';
         document.getElementById(`retry-${section}`).classList.add('d-none');
     });
+    console.log('Cleared all messages');
 }
 
 function updatePagination() {
@@ -129,6 +121,7 @@ function updatePagination() {
         }
     });
     pagination.appendChild(nextLi);
+    console.log(`Pagination updated: currentPage=${currentPage}, totalPages=${totalPages}`);
 }
 
 function initializeMap() {
@@ -137,6 +130,7 @@ function initializeMap() {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
+    console.log('Map initialized');
 }
 
 function updateMap(locations) {
@@ -147,6 +141,7 @@ function updateMap(locations) {
     if (locations.length === 0) {
         document.getElementById('location-data').textContent = 'No location data available';
         map.setView([0, 0], 2);
+        console.log('No locations available to show on map');
         return;
     }
 
@@ -169,6 +164,7 @@ function updateMap(locations) {
     // Update text data
     const latest = locations[0];
     document.getElementById('location-data').innerHTML = `Latest: Latitude: ${latest.latitude}, Longitude: ${latest.longitude}<br>Recorded: ${new Date(latest.created_at).toLocaleString()}`;
+    console.log(`${locations.length} location(s) updated on map`);
 }
 
 // Validation Functions
@@ -180,11 +176,11 @@ function validateEmail(email) {
 function validateCommandOptions(type, options) {
     switch (type) {
         case 'capturePhoto':
-            return options.camera && ['back', 'front'].includes(options.camera) &&
+            return options.camera && ['rear', 'front'].includes(options.camera) &&
                    options.flash && ['on', 'off'].includes(options.flash);
         case 'recordVideo':
-            return options.camera && ['back', 'front'].includes(options.camera) &&
-                   options.quality && ['480', '720', '1080'].includes(options.quality) &&
+            return options.camera && ['rear', 'front'].includes(options.camera) &&
+                   options.quality && ['low', 'medium', 'high'].includes(options.quality) &&
                    options.duration && [60, 120, 300].includes(Number(options.duration));
         case 'recordAudio':
             return options.duration && [60, 120, 300, 600].includes(Number(options.duration));
@@ -192,6 +188,7 @@ function validateCommandOptions(type, options) {
         case 'vibrate':
             return options.duration && Number.isInteger(Number(options.duration));
         case 'getLocation':
+        case 'batchLocations':
             return true;
         default:
             return false;
@@ -201,15 +198,18 @@ function validateCommandOptions(type, options) {
 // Session Management
 function saveSession(session) {
     sessionStorage.setItem('supabase_session', JSON.stringify(session));
+    console.log('Session saved');
 }
 
 function getSession() {
     const session = sessionStorage.getItem('supabase_session');
+    if (session) console.log('Session loaded from storage');
     return session ? JSON.parse(session) : null;
 }
 
 function clearSession() {
     sessionStorage.removeItem('supabase_session');
+    console.log('Session cleared');
 }
 
 // Supabase Operations
@@ -220,44 +220,37 @@ async function login(email, password) {
         if (password.length < 6) throw new Error('Password must be at least 6 characters');
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw new Error(error.message);
+        console.log('Login successful:', data);
         saveSession(data.session);
         showCommandsSection();
         await Promise.all([loadFiles(), loadLastLocation()]);
         setupRealtimeSubscriptions();
         initializeMap();
-        showToast('Login successful!', 'success');
     } catch (error) {
+        console.error('Login failed:', error);
         document.getElementById('error-message').textContent = `Login failed: ${error.message}`;
         document.getElementById('retry-login').classList.remove('d-none');
-        showToast('Login failed: ' + error.message, 'error');
     } finally {
         showLoading('login', false);
     }
 }
 
 async function sendCommand(type, options = {}) {
-    showLoading(type, true);
+    showLoading(type === 'batchLocations' ? 'batchLocations' : type, true);
     try {
         const { data: user, error: userError } = await supabase.auth.getUser();
         if (userError || !user.user) throw new Error('Not authenticated');
-        // Consistency: Ensure options.keys are as app expects
-        if (type === 'capturePhoto' || type === 'recordVideo') {
-            if (options.camera === 'rear') options.camera = 'back';
-            if (options.quality === 'low') options.quality = '480';
-            if (options.quality === 'medium') options.quality = '720';
-            if (options.quality === 'high') options.quality = '1080';
-        }
         if (!validateCommandOptions(type, options)) throw new Error('Invalid command options');
         const command = { user_id: user.user.id, type, options };
         const { error } = await supabase.from('commands').insert(command);
         if (error) throw new Error(error.message);
-        showToast('Command sent! Waiting for device...', 'info');
-        // Optionally: You could visually indicate pending command here.
+        console.log(`Command sent: ${type}`, options);
+        if (type === 'getLocation') await loadLastLocation();
     } catch (error) {
+        console.error('Command failed:', error);
         document.getElementById('error-message').textContent = `Command failed: ${error.message}`;
-        showToast('Command failed: ' + error.message, 'error');
     } finally {
-        showLoading(type, false);
+        showLoading(type === 'batchLocations' ? 'batchLocations' : type, false);
     }
 }
 
@@ -274,9 +267,15 @@ async function loadFiles() {
             .range((currentPage - 1) * filesPerPage, currentPage * filesPerPage - 1);
 
         // Apply filters
-        if (fileTypeFilter) query = query.eq('type', fileTypeFilter);
-        if (fileDateStart) query = query.gte('created_at', `${fileDateStart}T00:00:00Z`);
-        if (fileDateEnd) query = query.lte('created_at', `${fileDateEnd}T23:59:59Z`);
+        if (fileTypeFilter) {
+            query = query.eq('type', fileTypeFilter);
+        }
+        if (fileDateStart) {
+            query = query.gte('created_at', `${fileDateStart}T00:00:00Z`);
+        }
+        if (fileDateEnd) {
+            query = query.lte('created_at', `${fileDateEnd}T23:59:59Z`);
+        }
 
         const { data: files, count, error } = await query;
         if (error) throw new Error(error.message);
@@ -284,33 +283,31 @@ async function loadFiles() {
         totalFiles = count || files.length;
         const tbody = document.getElementById('files-table');
         tbody.innerHTML = '';
-        // Parallel signed URL fetch
-        const signedUrls = await Promise.all(files.map(file =>
-            supabase.storage.from(file.bucket).createSignedUrl(file.path, 60)
-                .then(({ data }) => data ? data.signedUrl : null)
-        ));
-        files.forEach((file, idx) => {
-            const signedUrl = signedUrls[idx];
+        for (const file of files) {
+            const { data: signedUrl } = await supabase.storage
+                .from(file.bucket)
+                .createSignedUrl(file.path, 60);
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${file.type}</td>
                 <td>${
-                    file.type === 'photo' ? `<img src="${signedUrl}" alt="${file.path}" class="img-fluid">` :
-                    file.type === 'video' ? `<video src="${signedUrl}" controls class="media"></video>` :
-                    `<audio src="${signedUrl}" controls class="media"></audio>`
+                    file.type === 'photo' ? `<img src="${signedUrl.signedUrl}" alt="${file.path}" class="img-fluid">` :
+                    file.type === 'video' ? `<video src="${signedUrl.signedUrl}" controls class="media"></video>` :
+                    `<audio src="${signedUrl.signedUrl}" controls class="media"></audio>`
                 }</td>
                 <td>${file.path}</td>
                 <td>
-                    <a href="${signedUrl}" download class="btn btn-sm btn-primary me-1" aria-label="Download File">Download</a>
-                    <button class="btn btn-sm btn-danger delete-btn" data-id="${file.id}" data-path="${file.path}" data-bucket="${file.bucket}" data-bs-toggle="modal" data-bs-target="#deleteConfirmModal" aria-label="Delete File">Delete</button>
+                    <a href="${signedUrl.signedUrl}" download class="btn btn-sm btn-primary me-1">Download</a>
+                    <button class="btn btn-sm btn-danger delete-btn" data-id="${file.id}" data-path="${file.path}" data-bucket="${file.bucket}" data-bs-toggle="modal" data-bs-target="#deleteConfirmMod[...]
                 </td>
             `;
             tbody.appendChild(row);
-        });
+        }
         updatePagination();
+        console.log(`Files loaded: ${files.length}, totalFiles: ${totalFiles}`);
     } catch (error) {
+        console.error('Load files failed:', error);
         showSectionError('files', `Load files failed: ${error.message}`);
-        showToast('Load files failed: ' + error.message, 'error');
     } finally {
         showSectionLoading('files', false);
     }
@@ -318,23 +315,28 @@ async function loadFiles() {
 
 async function deleteFile(id, path, bucket) {
     try {
-        const { error: storageError } = await supabase.storage.from(bucket).remove([path]);
+        const { error: storageError } = await supabase.storage
+            .from(bucket)
+            .remove([path]);
         if (storageError) throw new Error(storageError.message);
-        const { error: dbError } = await supabase.from('files').delete().eq('id', id);
+        const { error: dbError } = await supabase
+            .from('files')
+            .delete()
+            .eq('id', id);
         if (dbError) throw new Error(dbError.message);
+        console.log(`File deleted: ${path}`);
         await loadFiles();
         document.getElementById('files-error').classList.remove('text-danger');
         document.getElementById('files-error').classList.add('text-success');
         document.getElementById('files-error').textContent = 'File deleted successfully';
-        showToast('File deleted successfully!', 'success');
         setTimeout(() => {
             document.getElementById('files-error').textContent = '';
             document.getElementById('files-error').classList.remove('text-success');
             document.getElementById('files-error').classList.add('text-danger');
         }, 3000);
     } catch (error) {
+        console.error('Delete file failed:', error);
         document.getElementById('error-message').textContent = `Delete file failed: ${error.message}`;
-        showToast('Delete file failed: ' + error.message, 'error');
     }
 }
 
@@ -347,48 +349,55 @@ async function loadLastLocation() {
             .from('locations')
             .select('latitude, longitude, created_at')
             .eq('user_id', user.user.id)
-            .order('created_at', { ascending: false })
-            .limit(1);
+            .order('created_at', { ascending: false });
+
+        if (!showAllLocations) {
+            query = query.limit(1);
+        }
 
         const { data: locations, error } = await query;
         if (error) throw new Error(error.message);
         updateMap(locations);
+        console.log(`Locations loaded: ${locations.length}`);
     } catch (error) {
+        console.error('Load location failed:', error);
         showSectionError('location', `Load location failed: ${error.message}`);
-        showToast('Load location failed: ' + error.message, 'error');
     } finally {
         showSectionLoading('location', false);
     }
 }
 
 function setupRealtimeSubscriptions() {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-        if (!user) return;
-        // Files subscription
-        const filesChannel = supabase.channel('files-channel');
-        filesChannel
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: 'files',
-                filter: `user_id=eq.${user.id}`
-            }, () => {
-                loadFiles();
-            })
-            .subscribe();
-        // Locations subscription
-        const locationsChannel = supabase.channel('locations-channel');
-        locationsChannel
-            .on('postgres_changes', {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'locations',
-                filter: `user_id=eq.${user.id}`
-            }, () => {
-                loadLastLocation();
-            })
-            .subscribe();
-    });
+    const userId = supabase.auth.getUser().then(({ data: { user } }) => user?.id).catch(() => null);
+
+    // Files subscription
+    const filesChannel = supabase.channel('files-channel');
+    filesChannel
+        .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'files',
+            filter: `user_id=eq.${userId}`
+        }, () => {
+            console.log('Files table changed, reloading files');
+            loadFiles();
+        })
+        .subscribe((status) => console.log('Files channel status:', status));
+
+    // Locations subscription
+    const locationsChannel = supabase.channel('locations-channel');
+    locationsChannel
+        .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'locations',
+            filter: `user_id=eq.${userId}`
+        }, () => {
+            console.log('New location added, reloading location');
+            loadLastLocation();
+        })
+        .subscribe((status) => console.log('Locations channel status:', status));
+    console.log('Realtime subscriptions set up');
 }
 
 // Event Listeners
@@ -396,12 +405,14 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
+    console.log('Login form submitted');
     await login(email, password);
 });
 
 document.getElementById('retry-login').addEventListener('click', async () => {
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
+    console.log('Retry login clicked');
     await login(email, password);
 });
 
@@ -414,10 +425,10 @@ document.getElementById('logout').addEventListener('click', async () => {
         clearSession();
         showLoginSection();
         document.getElementById('error-message').textContent = 'Logged out successfully';
-        showToast('Logged out successfully!', 'success');
+        console.log('User logged out');
     } catch (error) {
+        console.error('Logout failed:', error);
         document.getElementById('error-message').textContent = `Logout failed: ${error.message}`;
-        showToast('Logout failed: ' + error.message, 'error');
     } finally {
         showLoading('logout', false);
     }
@@ -426,6 +437,7 @@ document.getElementById('logout').addEventListener('click', async () => {
 document.getElementById('capturePhoto').addEventListener('click', async () => {
     const camera = document.getElementById('photo-camera').value;
     const flash = document.getElementById('photo-flash').value;
+    console.log('Capture photo command issued');
     await sendCommand('capturePhoto', { camera, flash });
 });
 
@@ -433,51 +445,78 @@ document.getElementById('recordVideo').addEventListener('click', async () => {
     const camera = document.getElementById('video-camera').value;
     const quality = document.getElementById('video-quality').value;
     const duration = parseInt(document.getElementById('video-duration').value);
+    console.log('Record video command issued');
     await sendCommand('recordVideo', { camera, quality, duration });
 });
 
 document.getElementById('recordAudio').addEventListener('click', async () => {
     const duration = parseInt(document.getElementById('audio-duration').value);
+    console.log('Record audio command issued');
     await sendCommand('recordAudio', { duration });
 });
 
 document.getElementById('getLocation').addEventListener('click', async () => {
+    console.log('Get location command issued');
     await sendCommand('getLocation');
 });
 
+document.getElementById('batchLocations').addEventListener('click', async () => {
+    console.log('Batch locations command issued');
+    await sendCommand('batchLocations');
+});
+
 document.getElementById('ring').addEventListener('click', async () => {
+    console.log('Ring command issued');
     await sendCommand('ring', { duration: 5 });
 });
 
 document.getElementById('vibrate').addEventListener('click', async () => {
+    console.log('Vibrate command issued');
     await sendCommand('vibrate', { duration: 1 });
 });
 
-document.getElementById('retry-files').addEventListener('click', loadFiles);
-document.getElementById('retry-location').addEventListener('click', loadLastLocation);
+document.getElementById('retry-files').addEventListener('click', () => {
+    console.log('Retry files load');
+    loadFiles();
+});
+document.getElementById('retry-location').addEventListener('click', () => {
+    console.log('Retry location load');
+    loadLastLocation();
+});
 
 document.getElementById('files-per-page').addEventListener('change', (e) => {
     filesPerPage = parseInt(e.target.value);
     currentPage = 1;
+    console.log(`Files per page changed: ${filesPerPage}`);
     loadFiles();
 });
 
 document.getElementById('file-type-filter').addEventListener('change', (e) => {
     fileTypeFilter = e.target.value;
     currentPage = 1;
+    console.log(`File type filter changed: ${fileTypeFilter}`);
     loadFiles();
 });
 
 document.getElementById('file-date-start').addEventListener('change', (e) => {
     fileDateStart = e.target.value;
     currentPage = 1;
+    console.log(`File date start filter changed: ${fileDateStart}`);
     loadFiles();
 });
 
 document.getElementById('file-date-end').addEventListener('change', (e) => {
     fileDateEnd = e.target.value;
     currentPage = 1;
+    console.log(`File date end filter changed: ${fileDateEnd}`);
     loadFiles();
+});
+
+document.getElementById('toggle-location-view').addEventListener('click', () => {
+    showAllLocations = !showAllLocations;
+    document.getElementById('toggle-location-view').textContent = showAllLocations ? 'Show Latest Location' : 'Show All Locations';
+    console.log(`Location view toggled: showAllLocations=${showAllLocations}`);
+    loadLastLocation();
 });
 
 // Delete Confirmation
@@ -489,11 +528,13 @@ document.addEventListener('click', (e) => {
             path: e.target.dataset.path,
             bucket: e.target.dataset.bucket
         };
+        console.log('Delete file button clicked', pendingDelete);
     }
 });
 
 document.getElementById('confirmDelete').addEventListener('click', async () => {
     if (pendingDelete) {
+        console.log('Confirm delete file', pendingDelete);
         await deleteFile(pendingDelete.id, pendingDelete.path, pendingDelete.bucket);
         pendingDelete = null;
         const modal = bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal'));
@@ -507,31 +548,22 @@ function updateLoginButtonState() {
     const password = document.getElementById('password').value;
     const loginButton = document.getElementById('login');
     loginButton.disabled = !validateEmail(email) || password.length < 6;
+    console.log('Login button state updated');
 }
 
 document.getElementById('email').addEventListener('input', updateLoginButtonState);
 document.getElementById('password').addEventListener('input', updateLoginButtonState);
 
-// Session expiry handler: check on every load and every error
-async function checkSessionExpiry() {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-        clearSession();
-        showLoginSection();
-        showToast('Session expired. Please log in again.', 'error');
-        return true;
-    }
-    return false;
-}
-window.setInterval(checkSessionExpiry, 60 * 1000); // Check session expiry every minute
-
-// On first load/session
+// Check for existing session
 supabase.auth.getSession().then(({ data: { session } }) => {
     if (session || getSession()) {
+        console.log('Existing session found, loading dashboard');
         showCommandsSection();
         loadFiles();
         loadLastLocation();
         setupRealtimeSubscriptions();
         initializeMap();
+    } else {
+        console.log('No session found, showing login');
     }
 });
