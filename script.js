@@ -230,6 +230,7 @@ async function login(email, password) {
         console.error('Login failed:', error);
         document.getElementById('error-message').textContent = `Login failed: ${error.message}`;
         document.getElementById('retry-login').classList.remove('d-none');
+        updateLoginButtonState(); // make sure button state is updated after error
     } finally {
         showLoading('login', false);
     }
@@ -400,7 +401,10 @@ function setupRealtimeSubscriptions() {
     console.log('Realtime subscriptions set up');
 }
 
-// Event Listeners
+// ---------------------------
+// Event Listeners & Autofill
+// ---------------------------
+
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('email').value.trim();
@@ -547,12 +551,20 @@ function updateLoginButtonState() {
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
     const loginButton = document.getElementById('login');
-    loginButton.disabled = !validateEmail(email) || password.length < 6;
-    console.log('Login button state updated');
+    const enabled = validateEmail(email) && password.length >= 6;
+    loginButton.disabled = !enabled;
+    console.log(`Login button state updated: enabled=${enabled}`);
 }
 
+// Attach listeners for manual input
 document.getElementById('email').addEventListener('input', updateLoginButtonState);
 document.getElementById('password').addEventListener('input', updateLoginButtonState);
+
+// Call once on DOM load to handle autofill case
+document.addEventListener('DOMContentLoaded', () => {
+    updateLoginButtonState();
+    console.log('updateLoginButtonState called on DOMContentLoaded (handles autofill)');
+});
 
 // Check for existing session
 supabase.auth.getSession().then(({ data: { session } }) => {
