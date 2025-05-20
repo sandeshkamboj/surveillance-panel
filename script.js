@@ -230,7 +230,6 @@ async function login(email, password) {
         console.error('Login failed:', error);
         document.getElementById('error-message').textContent = `Login failed: ${error.message}`;
         document.getElementById('retry-login').classList.remove('d-none');
-        updateLoginButtonState(); // make sure button state is updated after error
     } finally {
         showLoading('login', false);
     }
@@ -401,10 +400,7 @@ function setupRealtimeSubscriptions() {
     console.log('Realtime subscriptions set up');
 }
 
-// ---------------------------
-// Event Listeners & Autofill
-// ---------------------------
-
+// Event Listeners
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('email').value.trim();
@@ -546,25 +542,8 @@ document.getElementById('confirmDelete').addEventListener('click', async () => {
     }
 });
 
-// Form Validation for Login Button
-function updateLoginButtonState() {
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
-    const loginButton = document.getElementById('login');
-    const enabled = validateEmail(email) && password.length >= 6;
-    loginButton.disabled = !enabled;
-    console.log(`Login button state updated: enabled=${enabled}`);
-}
-
-// Attach listeners for manual input
-document.getElementById('email').addEventListener('input', updateLoginButtonState);
-document.getElementById('password').addEventListener('input', updateLoginButtonState);
-
-// Call once on DOM load to handle autofill case
-document.addEventListener('DOMContentLoaded', () => {
-    updateLoginButtonState();
-    console.log('updateLoginButtonState called on DOMContentLoaded (handles autofill)');
-});
+// The login button is ALWAYS enabled (no validation disables it)
+document.getElementById('login').disabled = false;
 
 // Check for existing session
 supabase.auth.getSession().then(({ data: { session } }) => {
