@@ -298,7 +298,7 @@ async function loadFiles() {
                 <td>${file.path}</td>
                 <td>
                     <a href="${signedUrl.signedUrl}" download class="btn btn-sm btn-primary me-1">Download</a>
-                    <button class="btn btn-sm btn-danger delete-btn" data-id="${file.id}" data-path="${file.path}" data-bucket="${file.bucket}" data-bs-toggle="modal" data-bs-target="#deleteConfirmMod[...]
+                    <button class="btn btn-sm btn-danger delete-btn" data-id="${file.id}" data-path="${file.path}" data-bucket="${file.bucket}" data-bs-toggle="modal" data-bs-target="#deleteConfirmModal">Delete</button>
                 </td>
             `;
             tbody.appendChild(row);
