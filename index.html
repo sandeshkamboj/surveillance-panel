@@ -16,45 +16,45 @@
         </header>
 
         <!-- Login Section -->
-        <div id="login-section" class="card p-4 mx-auto" style="max-width: 400px;">
+        <div id="login-section" class="card p-4 mx-auto" style="max-width: 400px;" aria-label="Login to Surveillance Panel">
             <h3 class="text-center">Login</h3>
-            <form id="login-form">
+            <form id="login-form" aria-label="Login Form">
                 <div class="mb-3">
                     <label for="email" class="form-label">Email</label>
-                    <input id="email" type="email" class="form-control" placeholder="Email" required aria-describedby="emailHelp">
+                    <input id="email" type="email" class="form-control" placeholder="Email" required aria-describedby="emailHelp" aria-label="Email address">
                     <div id="emailHelp" class="form-text">We'll never share your email.</div>
                 </div>
                 <div class="mb-3">
                     <label for="password" class="form-label">Password</label>
-                    <input id="password" type="password" class="form-control" placeholder="Password" required minlength="6">
+                    <input id="password" type="password" class="form-control" placeholder="Password" required minlength="6" aria-label="Password">
                 </div>
-                <button id="login" type="submit" class="btn btn-primary w-100" disabled>
+                <button id="login" type="submit" class="btn btn-primary w-100" disabled aria-label="Submit Login">
                     <span id="login-text">Login</span>
                     <span id="login-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                 </button>
             </form>
             <div id="error-message" class="text-danger text-center mt-2" aria-live="polite"></div>
             <div id="retry-login" class="d-none mt-2">
-                <button class="btn btn-warning w-100">Retry Login</button>
+                <button class="btn btn-warning w-100" aria-label="Retry Login">Retry Login</button>
             </div>
         </div>
 
         <!-- Commands Section -->
-        <div id="commands-section" class="d-none">
+        <div id="commands-section" class="d-none" aria-label="Device Command Controls">
             <div class="card p-4 mb-4">
                 <h3>Commands</h3>
                 <!-- Capture Photo -->
                 <div class="mb-3">
                     <label for="photo-camera" class="form-label">Capture Photo</label>
-                    <select id="photo-camera" class="form-select mb-2" aria-label="Select camera">
-                        <option value="rear">Rear Camera</option>
+                    <select id="photo-camera" class="form-select mb-2" aria-label="Select camera for photo">
+                        <option value="back">Rear Camera</option>
                         <option value="front">Front Camera</option>
                     </select>
-                    <select id="photo-flash" class="form-select mb-2" aria-label="Select flash mode">
+                    <select id="photo-flash" class="form-select mb-2" aria-label="Select flash mode for photo">
                         <option value="off">Flash Off</option>
                         <option value="on">Flash On</option>
                     </select>
-                    <button id="capturePhoto" class="btn btn-success w-100">
+                    <button id="capturePhoto" class="btn btn-success w-100" aria-label="Capture Photo">
                         <span>Capture Photo</span>
                         <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                     </button>
@@ -62,21 +62,21 @@
                 <!-- Record Video -->
                 <div class="mb-3">
                     <label for="video-camera" class="form-label">Record Video</label>
-                    <select id="video-camera" class="form-select mb-2" aria-label="Select video camera">
-                        <option value="rear">Rear Camera</option>
+                    <select id="video-camera" class="form-select mb-2" aria-label="Select camera for video">
+                        <option value="back">Rear Camera</option>
                         <option value="front">Front Camera</option>
                     </select>
                     <select id="video-quality" class="form-select mb-2" aria-label="Select video quality">
-                        <option value="low">Low Quality</option>
-                        <option value="medium">Medium Quality</option>
-                        <option value="high">High Quality</option>
+                        <option value="480">Low Quality</option>
+                        <option value="720">Medium Quality</option>
+                        <option value="1080">High Quality</option>
                     </select>
                     <select id="video-duration" class="form-select mb-2" aria-label="Select video duration">
                         <option value="60">1 minute</option>
-                        <option value="120">2 mintues</option>
+                        <option value="120">2 minutes</option>
                         <option value="300">5 minutes</option>
                     </select>
-                    <button id="recordVideo" class="btn btn-success w-100">
+                    <button id="recordVideo" class="btn btn-success w-100" aria-label="Record Video">
                         <span>Record Video</span>
                         <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                     </button>
@@ -86,12 +86,11 @@
                     <label for="audio-duration" class="form-label">Record Audio</label>
                     <select id="audio-duration" class="form-select mb-2" aria-label="Select audio duration">
                         <option value="60">1 minute</option>
-                        <option value="120">2 mintues</option>
+                        <option value="120">2 minutes</option>
                         <option value="300">5 minutes</option>
-                        <option value="600">10 minute</option>
-                        
+                        <option value="600">10 minutes</option>
                     </select>
-                    <button id="recordAudio" class="btn btn-success w-100">
+                    <button id="recordAudio" class="btn btn-success w-100" aria-label="Record Audio">
                         <span>Record Audio</span>
                         <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                     </button>
@@ -99,23 +98,15 @@
                 <!-- Get Location -->
                 <div class="mb-3">
                     <label class="form-label">Get Location</label>
-                    <button id="getLocation" class="btn btn-success w-100">
+                    <button id="getLocation" class="btn btn-success w-100" aria-label="Get Current Location">
                         <span>Get Current Location</span>
-                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                    </button>
-                </div>
-                <!-- Batch Locations -->
-                <div class="mb-3">
-                    <label class="form-label">Batch Location Update</label>
-                    <button id="batchLocations" class="btn btn-success w-100">
-                        <span>Upload Batched Locations</span>
                         <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                     </button>
                 </div>
                 <!-- Ring -->
                 <div class="mb-3">
                     <label class="form-label">Ring</label>
-                    <button id="ring" class="btn btn-success w-100">
+                    <button id="ring" class="btn btn-success w-100" aria-label="Ring Device">
                         <span>Ring (5s)</span>
                         <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                     </button>
@@ -123,12 +114,12 @@
                 <!-- Vibrate -->
                 <div class="mb-3">
                     <label class="form-label">Vibrate</label>
-                    <button id="vibrate" class="btn btn-success w-100">
+                    <button id="vibrate" class="btn btn-success w-100" aria-label="Vibrate Device">
                         <span>Vibrate (1s)</span>
                         <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                     </button>
                 </div>
-                <button id="logout" class="btn btn-danger w-100">
+                <button id="logout" class="btn btn-danger w-100" aria-label="Logout">
                     <span>Logout</span>
                     <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                 </button>
@@ -161,7 +152,7 @@
                 <div class="d-flex justify-content-between mb-3">
                     <div>
                         <label for="files-per-page" class="form-label me-2">Files per page:</label>
-                        <select id="files-per-page" class="form-select d-inline-block w-auto">
+                        <select id="files-per-page" class="form-select d-inline-block w-auto" aria-label="Files per page">
                             <option value="10">10</option>
                             <option value="25">25</option>
                             <option value="50">50</option>
@@ -182,29 +173,26 @@
                     </thead>
                     <tbody id="files-table"></tbody>
                 </table>
-                <div id="files-loading" class="text-center d-none">
+                <div id="files-loading" class="text-center d-none" aria-live="polite">
                     <div class="spinner-border" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
                 </div>
                 <div id="files-error" class="text-danger text-center d-none" aria-live="polite"></div>
-                <button id="retry-files" class="btn btn-warning w-100 d-none">Retry Loading Files</button>
+                <button id="retry-files" class="btn btn-warning w-100 d-none" aria-label="Retry Loading Files">Retry Loading Files</button>
             </div>
             <!-- Location Data -->
             <div class="card p-4">
                 <h3>Location Data</h3>
-                <div class="mb-3">
-                    <button id="toggle-location-view" class="btn btn-secondary">Show All Locations</button>
-                </div>
                 <div id="location-map" style="height: 400px;" aria-label="Location map"></div>
                 <div id="location-data" class="mb-3 mt-3" aria-live="polite"></div>
-                <div id="location-loading" class="text-center d-none">
+                <div id="location-loading" class="text-center d-none" aria-live="polite">
                     <div class="spinner-border" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
                 </div>
                 <div id="location-error" class="text-danger text-center d-none" aria-live="polite"></div>
-                <button id="retry-location" class="btn btn-warning w-100 d-none">Retry Loading Location</button>
+                <button id="retry-location" class="btn btn-warning w-100 d-none" aria-label="Retry Loading Location">Retry Loading Location</button>
             </div>
         </div>
 
@@ -227,6 +215,7 @@
             </div>
         </div>
     </div>
+    <div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index: 1055;"></div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script type="module" src="script.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
