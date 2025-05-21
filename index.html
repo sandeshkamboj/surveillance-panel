@@ -83,7 +83,7 @@
                     </select>
                     <select id="video-duration" class="form-select mb-2" aria-label="Select video duration">
                         <option value="60">1 minute</option>
-                        <option value="120">2 mintues</option>
+                        <option value="120">2 minutes</option>
                         <option value="300">5 minutes</option>
                     </select>
                     <button id="recordVideo" class="btn btn-success w-100">
@@ -96,9 +96,9 @@
                     <label for="audio-duration" class="form-label">Record Audio</label>
                     <select id="audio-duration" class="form-select mb-2" aria-label="Select audio duration">
                         <option value="60">1 minute</option>
-                        <option value="120">2 mintues</option>
+                        <option value="120">2 minutes</option>
                         <option value="300">5 minutes</option>
-                        <option value="600">10 minute</option>
+                        <option value="600">10 minutes</option>
                     </select>
                     <button id="recordAudio" class="btn btn-success w-100">
                         <span>Record Audio</span>
@@ -110,14 +110,6 @@
                     <label class="form-label">Get Location</label>
                     <button id="getLocation" class="btn btn-success w-100">
                         <span>Get Current Location</span>
-                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                    </button>
-                </div>
-                <!-- Batch Locations -->
-                <div class="mb-3">
-                    <label class="form-label">Batch Location Update</label>
-                    <button id="batchLocations" class="btn btn-success w-100">
-                        <span>Upload Batched Locations</span>
                         <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                     </button>
                 </div>
@@ -142,31 +134,21 @@
                     <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                 </button>
             </div>
-            <!-- File Management -->
+            <!-- File Browser -->
             <div class="card p-4 mb-4">
-                <h3>Files</h3>
-                <div class="mb-3">
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <label for="file-type-filter" class="form-label">File Type</label>
-                            <select id="file-type-filter" class="form-select" aria-label="Filter by file type">
-                                <option value="">All Types</option>
-                                <option value="photo">Photo</option>
-                                <option value="video">Video</option>
-                                <option value="audio">Audio</option>
-                                <option value="file">File</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label for="file-date-start" class="form-label">Date From</label>
-                            <input id="file-date-start" type="date" class="form-control" aria-label="Filter by start date">
-                        </div>
-                        <div class="col-md-4">
-                            <label for="file-date-end" class="form-label">Date To</label>
-                            <input id="file-date-end" type="date" class="form-control" aria-label="Filter by end date">
-                        </div>
+                <h3>Device File Browser</h3>
+                <button id="refresh-filetree" class="btn btn-secondary mb-2">Refresh File Tree</button>
+                <div id="file-tree-loading" class="text-center d-none">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
                     </div>
                 </div>
+                <div id="file-browser"></div>
+            </div>
+            <!-- File Management -->
+            <div class="card p-4 mb-4">
+                <h3>Uploaded Files</h3>
+                <button id="deleteAllFiles" class="btn btn-danger mb-2">Delete All Files from Supabase</button>
                 <div class="d-flex justify-content-between mb-3">
                     <div>
                         <label for="files-per-page" class="form-label me-2">Files per page:</label>
